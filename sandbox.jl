@@ -1,4 +1,6 @@
+using AtomsBase
 using SimpleCrystals
+using UnitfulAtomic
 using LinearAlgebra
 using DFTK
 using Molly
@@ -40,7 +42,7 @@ struct DFTKInter
     model::Model
 end
 
-Molly.forces(inter::DFTKInter, sys, neighbors=nothing; n_threads=Threads.nthreads()) = get_forces(sys.coords)
+Molly.forces(inter::DFTKInter, sys, neighbors=nothing; n_threads=Threads.nthreads()) = get_forces(sys.coords, inter.model)
 
 # build initial geometry
 silicon_crystal = Diamond(5.431u"Å", :Si, SVector{3}([1,1,1]))
@@ -54,7 +56,7 @@ dftk_model = Model(model_LDA(FlexibleSystem(silicon_crystal)),
                    symmetries = false)
 
 # set up Molly stuff
-molly_sys = System(c, 
+molly_sys = System(silicon_crystal, 
                    general_inters = (DFTKInter(dftk_model),),
                    velocities = [random_velocity(atom.mass, 100u"K") for atom in silicon_crystal.atoms],
                    force_units = u"Eh_au/bohr",
