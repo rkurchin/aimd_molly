@@ -1,2 +1,6 @@
 Manifest.toml
 .CondaPkg/*
+.DS_Store
+.VSCodeCounter/*
+*#
+*.mp4
