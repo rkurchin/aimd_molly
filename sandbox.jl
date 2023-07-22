@@ -6,14 +6,7 @@ using DFTK
 using Molly
 using GLMakie
 
-# convert a `Crystal` object to an AtomsBase system so DFTK can read it in
-function FlexibleSystem(c::Crystal)
-    particles = [AtomsBase.Atom(a.sym, a.position) for a in c.atoms] # this isn't crucial, but AtomsIO can't write to CIF otherwise
-    bb = [bounding_box(c)[1,:], bounding_box(c)[2,:], bounding_box(c)[3,:]]
-    FlexibleSystem(particles, bb, boundary_conditions(c))
-end
-
-# a few other convenient conversion-related functions
+# define a few helpful functions
 # positions(m::Model) = [m.lattice * pos .* u"Å" for pos in m.positions]
 frac_coords(vec, lat) = [ustrip(dot(vec, el)/norm(el)^2) for el in lat]
 
@@ -24,8 +17,6 @@ end
 
 # getting forces from DFTK
 function get_forces(coords, dftk_model; kgrid = [2, 2, 2], Ecut = 5)
-    println(Dates.now())
-
     # calculate fractional coordinates and update positions
     new_model = Model(dftk_model, positions=get_frac_coords(coords, dftk_model))
 
@@ -49,7 +40,7 @@ silicon_crystal = Diamond(5.431u"Å", :Si, SVector{3}([1,1,1]))
 
 # set up initial DFTK stuff
 atoms = [ElementPsp(:Si, psp=load_psp("hgh/lda/Si-q4")) for i in 1:length(silicon_crystal)]
-dftk_model = Model(model_LDA(FlexibleSystem(silicon_crystal)), 
+dftk_model = Model(model_LDA(FastSystem(silicon_crystal)), 
                    atoms = atoms, 
                    temperature = 0.001, 
                    smearing = DFTK.Smearing.FermiDirac(), 
@@ -58,7 +49,7 @@ dftk_model = Model(model_LDA(FlexibleSystem(silicon_crystal)),
 # set up Molly stuff
 molly_sys = System(silicon_crystal, 
                    general_inters = (DFTKInter(dftk_model),),
-                   velocities = [random_velocity(atom.mass, 100u"K") for atom in silicon_crystal.atoms],
+                   velocities = [random_velocity(atom.atomic_mass, 100u"K") for atom in silicon_crystal.atoms],
                    force_units = u"Eh_au/bohr",
                    loggers = (coords=CoordinateLogger(5),
                               velocities=VelocityLogger(5),
@@ -67,5 +58,5 @@ molly_sys = System(silicon_crystal,
 
 simulator = VelocityVerlet(dt=0.002u"ps")
 
-simulate!(molly_sys, simulator, 750)
-visualize(molly_sys.loggers.coords, molly_sys.boundary, "sim.mp4")
+# simulate!(molly_sys, simulator, 300)
+# visualize(molly_sys.loggers.coords, molly_sys.boundary, "sim_1ps.mp4"; trails=5, markersize=1)
